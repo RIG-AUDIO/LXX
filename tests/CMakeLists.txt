@@ -7,6 +7,11 @@ file(GLOB TEST_SOURCES "*.cpp")
 # assertions (finiteness, amplitude, DC, counts) are never scaled.
 if(NOT DEFINED LXX_TEST_TIME_SCALE)
     if(LXX_ENABLE_ASAN OR "${CMAKE_CXX_FLAGS}" MATCHES "-fsanitize")
+        # Sanitizers: 10-50x slower than a normal run.
+        set(LXX_TEST_TIME_SCALE 16.0)
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        # -O0 Debug: the budgets are calibrated on Release numbers, where the
+        # realtime claim is enforced; a Debug run only has to prove "no hang".
         set(LXX_TEST_TIME_SCALE 16.0)
     else()
         set(LXX_TEST_TIME_SCALE 1.0)

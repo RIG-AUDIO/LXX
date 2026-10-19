@@ -77,6 +77,8 @@ void testVoiceNoteSequence()
         transitions += 5;
         const auto wall = seconds(t0, Clock::now());
         if (wall > lxx::test::timeBudget(120.0)) {
+            std::printf("FAIL: voice stress watchdog wall=%.2fs budget=%.2fs\n",
+                        wall, lxx::test::timeBudget(120.0));
             expectTrue(false, "voice stress watchdog (hung)");
             return;
         }
@@ -269,6 +271,8 @@ void testTransportJump()
     auto t0 = Clock::now();
     (void)t.processBlock(48000 * 5);
     const double wall = seconds(t0, Clock::now());
+    std::printf("  transport catch-up wall=%.4fs budget=%.2fs\n",
+                wall, lxx::test::timeBudget(2.0));
     expectTrue(wall < lxx::test::timeBudget(2.0), "5s catch-up bounded");
     t.stop();
 }
