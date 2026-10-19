@@ -17,6 +17,11 @@ file(GLOB_RECURSE DSP_SOURCES
 
 add_library(lxx_dsp STATIC ${DSP_SOURCES})
 
+# The DSP library is linked into the VST3 shared module, so every object must
+# be position independent.  Without this the plugin link fails with
+# "relocation R_X86_64_PC32 ... can not be used when making a shared object".
+set_target_properties(lxx_dsp PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_include_directories(lxx_dsp
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}

@@ -63,6 +63,9 @@ jobs:
         env:
           # CI has no maintainer-side denylist; everything else must pass.
           LXX_PUBLICATION_DENYLIST: ""
+          # The identity check verifies this token addresses RIG-AUDIO/LXX.
+          # The script never prints it.
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify-publication.sh
 
       - name: Documentation cross-references

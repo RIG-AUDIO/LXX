@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include "test_time_budget.h"
 #include <algorithm>
 #include <vector>
 
@@ -122,7 +123,7 @@ void testParamFuzz()
     }
     const double wall = seconds(t0, Clock::now());
     std::printf("  100000 updates wall=%.4fs\n", wall);
-    expectTrue(wall < 5.0, "coefficient updates realtime-safe");
+    expectTrue(wall < lxx::test::timeBudget(5.0), "coefficient updates realtime-safe");
 }
 
 void testSelfOsc()
@@ -156,7 +157,7 @@ void testSelfOsc()
     std::printf("  wall=%.2fs maxAbs=%.4f ic1=%.4f ic2=%.4f\n",
                 wall, maxAbs, voice.getFilterIc1(), voice.getFilterIc2());
     expectTrue(std::isfinite(maxAbs) && maxAbs < 8.0f, "self-osc bounded");
-    expectTrue(wall < 60.0, "self-osc completed");
+    expectTrue(wall < lxx::test::timeBudget(60.0), "self-osc completed");
 }
 
 void testImpulse()

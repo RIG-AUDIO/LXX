@@ -67,16 +67,50 @@ jobs:
       - name: Standalone prohibition (configured build graph)
         run: |
           set -euo pipefail
-          # No Standalone target may exist in the generated build graph.
-          if grep -rIl 'Standalone' build/CMakeCache.txt \
-                 build/build.ninja build/CMakeFiles 2>/dev/null \
-             | grep -v 'JUCE_VST3_CAN_REPLACE_VST2' ; then
+          # JUCE compiles every juce_audio_plugin_client_<Format>.cpp wrapper
+          # into the plugin target (each file is guarded by
+          # JucePlugin_Build_<Format>), so a file or object named
+          # "*Standalone*" is NOT evidence of a Standalone build.  What must be
+          # absent is a Standalone *product*: an enabled build define, a ninja
+          # edge that produces a non-object output, or a non-object artefact.
+          bad=0
+
+          echo "-- JucePlugin_Build_* defines in the build graph --"
+          defs="$(grep -o 'JucePlugin_Build_[A-Za-z0-9]*=[0-9]*' build/build.ninja \
+                  | sort -u || true)"
+          printf '%s\n' "$defs"
+          if printf '%s\n' "$defs" | grep -E 'JucePlugin_Build_(Standalone|AU|AAX|VST2|LV2|Unity)=1' ; then
+            echo "a prohibited plugin format is enabled in the build graph"
+            bad=1
+          fi
+
+          echo "-- ninja edges producing a Standalone output --"
+          edges="$(grep -E '^build ' build/build.ninja | grep -i 'standalone' \
+                   | sed -E 's/^build ([^:]+):.*/\1/' \
+                   | grep -viE '\.(o|obj|d|a|so)$' || true)"
+          if [ -n "$edges" ]; then
+            printf '%s\n' "$edges"
+            echo "Standalone target present in the build graph"
+            bad=1
+          fi
+
+          echo "-- non-object files under a Standalone path --"
+          artefacts="$(find build -ipath '*standalone*' -type f \
+                       ! -name '*.o' ! -name '*.obj' ! -name '*.d' \
+                       ! -name '*.a' -print -quit || true)"
+          if [ -n "$artefacts" ]; then
+            echo "$artefacts"
+            echo "Standalone artefact present in the build tree"
+            bad=1
+          fi
+
+          echo "-- evidence: Standalone mentions (wrapper objects are expected) --"
+          grep -in 'standalone' build/build.ninja | head -20 || echo "(none)"
+
+          if [ "$bad" -ne 0 ]; then
             echo "Standalone leaked into the configured build graph"; exit 1
           fi
-          if find build -iname '*Standalone*' -print -quit | grep -q .; then
-            echo "Standalone path present in the build tree"; exit 1
-          fi
-          echo "ok: no Standalone target or path"
+          echo "ok: no Standalone target, define or artefact"
 
       - name: Build
         run: cmake --build build --parallel 2
@@ -89,14 +123,18 @@ jobs:
       - name: Standalone prohibition (built artefacts)
         run: |
           set -euo pipefail
-          if find build -iname '*Standalone*' -print -quit | grep -q .; then
+          # Same precision as the configured-graph gate: JUCE wrapper object
+          # files are named *Standalone*.cpp.o and are expected to exist.
+          if find build -ipath '*standalone*' -type f \
+                 ! -name '*.o' ! -name '*.obj' ! -name '*.d' ! -name '*.a' \
+                 -print -quit | grep -q .; then
             echo "Standalone artefact was built"; exit 1
+          fi
+          if find build -type d -ipath '*artefacts*standalone*' -print -quit | grep -q .; then
+            echo "Standalone artefact directory produced"; exit 1
           fi
           if find build/src/plugin -name '*.app' -print -quit | grep -q .; then
             echo "application package produced"; exit 1
-          fi
-          if find build/src/plugin -path '*artefacts*Standalone*' -print -quit | grep -q .; then
-            echo "Standalone artefact directory produced"; exit 1
           fi
           echo "ok: plugin-only artefacts"
 
@@ -104,7 +142,7 @@ jobs:
         id: vst3
         run: |
           set -euo pipefail
-          vst3="build/src/plugin/LXX_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
+          vst3="build/src/plugin/LXXPlugin_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
           if [ ! -e "$vst3" ]; then
             echo "required VST3 artefact missing: $vst3"
             find build/src/plugin -maxdepth 5 -print | sed 's/^/  /' || true

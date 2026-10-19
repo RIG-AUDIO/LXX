@@ -41,34 +41,53 @@ public:
     // Get curve value at 32-bit phase (for high-res envelopes)
     Sample getValue32(EnvCurveType type, uint32_t phase) const;
     
+    // Firmware control rates as evaluated by upstream anu/resources/lookup_tables.py.
+    //
+    // The script is Python 2, so `20000000 / 510` is integer division and
+    // yields 39215 *before* the float divisions that follow.  The published
+    // firmware tables (anu/resources.cc) were generated with those values:
+    //   voice tables: 39215 / 8.0 / 2.0 = 2450.9375 Hz
+    //   drum tables:  39215 / 32.0      = 1225.46875 Hz
+    // The real hardware control rate is 20000000/510/8/2 = 2450.98039 Hz; the
+    // 1.7e-5 relative difference is part of the firmware tables, so table
+    // generation reproduces it exactly.  tests/test_firmware_tables.cpp
+    // asserts bit-exact reproduction of all four published tables.
+    static constexpr double kVoiceControlRate = (20000000 / 510) / 8.0 / 2.0;
+    static constexpr double kDrumControlRate  = (20000000 / 510) / 32.0;
+
+    // The generators take double arguments and truncate like numpy's
+    // `astype(int)`: the upstream tables are generated in double precision and
+    // are asserted against the published firmware tables in
+    // tests/test_firmware_tables.cpp.
+
     // Generate gamma-law time mapping (matches lookup_tables.py)
-    // gamma = 0.175, 256 values
+    // gamma = 0.175, 256 values, 32.32 increments
     static std::array<uint32_t, 256> generateEnvIncrements(
-        Sample maxTime = kEnvMaxTime,
-        Sample minTime = kEnvMinTime,
-        Sample gamma = kEnvGamma,
-        Sample controlRate = 20000000.0f / 510.0f / 8.0f / 2.0f
+        double maxTime = 12.0,
+        double minTime = 3.0 / kVoiceControlRate,
+        double gamma = 0.175,
+        double controlRate = kVoiceControlRate
     );
-    
-    // Generate drum envelope increments (gamma = 0.25)
+
+    // Generate drum envelope increments (gamma = 0.25, min_time = 4/control)
     static std::array<uint16_t, 256> generateDrumEnvIncrements(
-        Sample maxTime = kDrmEnvMaxTime,
-        Sample gamma = kDrmEnvGamma,
-        Sample controlRate = 20000000.0f / 510.0f / 32.0f
+        double maxTime = 4.0,
+        double gamma = 0.25,
+        double controlRate = kDrumControlRate
     );
-    
-    // Generate glide increments (gamma = 0.1)
+
+    // Generate glide increments (gamma = 0.1, min_time = 3/control)
     static std::array<uint16_t, 256> generateGlideIncrements(
-        Sample maxTime = kGlideMaxTime,
-        Sample gamma = kGlideGamma,
-        Sample controlRate = 20000000.0f / 510.0f / 8.0f / 2.0f
+        double maxTime = 6.0,
+        double gamma = 0.1,
+        double controlRate = kVoiceControlRate
     );
-    
+
     // Generate LFO increments (32-bit, linear in log space)
     static std::array<uint32_t, 256> generateLfoIncrements(
-        Sample minFreq = kLfoMinFreq,
-        Sample maxFreq = kLfoMaxFreq,
-        Sample controlRate = 20000000.0f / 510.0f / 8.0f / 2.0f
+        double minFreq = 1.0 / 16.0,
+        double maxFreq = 100.0,
+        double controlRate = kVoiceControlRate
     );
 
     // Access to raw tables for validation

@@ -6,7 +6,9 @@ name: sanitizers
 on:
   pull_request:
   push:
-    branches: [main]
+    # Sanitizer coverage is required on every branch: a UBSan finding must be
+    # fixed on the branch that introduced it, not discovered after a merge.
+    branches: ["**"]
   workflow_dispatch:
   schedule:
     - cron: "17 4 * * 1"

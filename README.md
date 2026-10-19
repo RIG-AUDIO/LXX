@@ -58,7 +58,7 @@ Options:
 | `LXX_ENABLE_ASAN` | `OFF` | AddressSanitizer build, never for shipping |
 
 The VST3 artifact is written to
-`build/src/plugin/LXX_artefacts/Release/VST3/LXX.vst3`.
+`build/src/plugin/LXXPlugin_artefacts/Release/VST3/LXX.vst3`.
 
 ### Prerequisites
 

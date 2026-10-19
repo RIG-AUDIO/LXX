@@ -61,7 +61,7 @@ jobs:
       - name: Require the VST3 artefact
         run: |
           set -euo pipefail
-          vst3="build/src/plugin/LXX_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
+          vst3="build/src/plugin/LXXPlugin_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
           test -e "$vst3"
           find "$vst3" -maxdepth 3 -type f -print | sed 's/^/  /'
 
@@ -76,7 +76,7 @@ jobs:
           xvfb-run -a ./pluginval \
             --strictness-level 10 \
             --verbose \
-            --validate "build/src/plugin/LXX_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
+            --validate "build/src/plugin/LXXPlugin_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
 
       - name: Sanitizer build and test
         if: matrix.compiler == 'clang' && matrix.build_type == 'Debug'
@@ -113,7 +113,7 @@ jobs:
             ctest --test-dir build -N || true
             echo
             echo "## vst3 sha256"
-            find build/src/plugin/LXX_artefacts -name '*.so' -o -name '*.vst3' | while read -r f; do
+            find build/src/plugin/LXXPlugin_artefacts -name '*.so' -o -name '*.vst3' | while read -r f; do
               sha256sum "$f"
             done
           } > qualification/report-${{ matrix.compiler }}-${{ matrix.build_type }}.txt
