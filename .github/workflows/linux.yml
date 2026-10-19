@@ -95,7 +95,10 @@ jobs:
           fi
 
           echo "-- non-object files under a Standalone path --"
+          # build/_deps is the FetchContent source tree: JUCE ships its
+          # Standalone *sources* there by design, so only build outputs count.
           artefacts="$(find build -ipath '*standalone*' -type f \
+                       ! -ipath 'build/_deps/*' \
                        ! -name '*.o' ! -name '*.obj' ! -name '*.d' \
                        ! -name '*.a' -print -quit || true)"
           if [ -n "$artefacts" ]; then
@@ -105,7 +108,7 @@ jobs:
           fi
 
           echo "-- evidence: Standalone mentions (wrapper objects are expected) --"
-          grep -in 'standalone' build/build.ninja | head -20 || echo "(none)"
+          grep -in 'standalone' build/build.ninja | sed -n '1,20p' || echo "(none)"
 
           if [ "$bad" -ne 0 ]; then
             echo "Standalone leaked into the configured build graph"; exit 1
@@ -126,11 +129,13 @@ jobs:
           # Same precision as the configured-graph gate: JUCE wrapper object
           # files are named *Standalone*.cpp.o and are expected to exist.
           if find build -ipath '*standalone*' -type f \
+                 ! -ipath 'build/_deps/*' \
                  ! -name '*.o' ! -name '*.obj' ! -name '*.d' ! -name '*.a' \
                  -print -quit | grep -q .; then
             echo "Standalone artefact was built"; exit 1
           fi
-          if find build -type d -ipath '*artefacts*standalone*' -print -quit | grep -q .; then
+          if find build -type d -ipath '*artefacts*standalone*' \
+                 ! -ipath 'build/_deps/*' -print -quit | grep -q .; then
             echo "Standalone artefact directory produced"; exit 1
           fi
           if find build/src/plugin -name '*.app' -print -quit | grep -q .; then
