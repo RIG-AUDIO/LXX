@@ -43,11 +43,10 @@ void DrumSequencer::start()
     perturbation_.fill(0);
 }
 
-std::vector<DrumHitEvent> DrumSequencer::clockStep(const SequencerSettings& settings,
-                                                 bool sequencerRunning,
-                                                 uint32_t* rngState)
+FixedEventList<DrumHitEvent, kNumDrumParts> DrumSequencer::clockStep(
+    const SequencerSettings& settings, bool sequencerRunning, uint32_t* rngState)
 {
-    std::vector<DrumHitEvent> hits;
+    FixedEventList<DrumHitEvent, kNumDrumParts> hits;
     if (!sequencerRunning || !settings.hasDrums()) {
         return hits;
     }
@@ -74,7 +73,7 @@ std::vector<DrumHitEvent> DrumSequencer::clockStep(const SequencerSettings& sett
             DrumHitEvent hit;
             hit.part = i;
             hit.level = static_cast<uint8_t>(128 + (level >> 1));
-            hits.push_back(hit);
+            hits.push(hit);
         }
 
         overrideMask = static_cast<uint8_t>(overrideMask << 1);

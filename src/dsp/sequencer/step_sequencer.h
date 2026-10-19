@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "sequencer/sequencer_types.h"
 
 namespace lxx {
@@ -19,7 +17,7 @@ public:
     bool running() const { return running_; }
     uint8_t currentStep() const { return stepIndex_; }
 
-    std::vector<SeqNoteEvent> clockStep();
+    FixedEventList<SeqNoteEvent, kMaxSequenceEventsPerStep> clockStep();
 
 private:
     Sequence sequence_ {};

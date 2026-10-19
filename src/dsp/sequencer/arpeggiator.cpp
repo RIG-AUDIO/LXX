@@ -40,9 +40,9 @@ void Arpeggiator::stop()
     patternStep_ = 0;
 }
 
-std::vector<ArpNoteEvent> Arpeggiator::clockStep(uint8_t randomByte)
+FixedEventList<ArpNoteEvent, kMaxArpEventsPerStep> Arpeggiator::clockStep(uint8_t randomByte)
 {
-    std::vector<ArpNoteEvent> events;
+    FixedEventList<ArpNoteEvent, kMaxArpEventsPerStep> events;
     if (!hasArpeggiator()) {
         ++patternStep_;
         patternMask_ = static_cast<uint16_t>(patternMask_ << 1);
@@ -82,7 +82,7 @@ std::vector<ArpNoteEvent> Arpeggiator::clockStep(uint8_t randomByte)
         event.accent = accent;
         event.slide = randomByte < slideThreshold;
         event.gate = true;
-        events.push_back(event);
+        events.push(event);
     }
 
     ++patternStep_;

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <vector>
 
 namespace lxx {
@@ -44,6 +45,10 @@ public:
         recon_.prepare(sampleRate_);
         const uint32_t n = maxBlock > 0 ? maxBlock : 2048;
         scratch_.assign(n, 0.0f);
+        // Headroom so that the grow-on-demand path in processBlock() does not
+        // reallocate on the audio thread for a host block that is larger than
+        // the reported maximum but still within a sane bound.
+        scratch_.reserve(std::max<std::size_t>(static_cast<std::size_t>(n) * 2u, 4096u));
         sequencerOnly_ = false;
         bypassedRenders_ = 0;
         for (int i = 0; i < 6; ++i) {
@@ -127,6 +132,8 @@ public:
             return;
         }
 
+        // Grow-on-demand last resort: init() reserves headroom, so this only
+        // runs for a host block far larger than any realistic maximum.
         if (scratch_.size() < numSamples)
             scratch_.assign(numSamples, 0.0f);
 

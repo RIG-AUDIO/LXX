@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 
 #include "sequencer/arpeggiator.h"
 #include "sequencer/clock.h"
@@ -13,10 +12,14 @@
 namespace lxx {
 namespace dsp {
 
+// The transport runs on the audio thread, so the event lists are fixed
+// capacity: no heap allocation happens while rendering.  Capacities follow
+// the structural bounds of the transport (at most kMaxStepPulsesPerBlock
+// step pulses per block, at most kNumDrumParts drum parts per step).
 struct TransportEvents {
-    std::vector<ArpNoteEvent> arp;
-    std::vector<SeqNoteEvent> sequence;
-    std::vector<DrumHitEvent> drums;
+    FixedEventList<ArpNoteEvent, kMaxArpEventsPerBlock> arp;
+    FixedEventList<SeqNoteEvent, kMaxSequenceEventsPerBlock> sequence;
+    FixedEventList<DrumHitEvent, kMaxDrumEventsPerBlock> drums;
     bool stepPulse = false;
     bool releaseHeldArp = false;
 };
