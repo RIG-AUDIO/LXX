@@ -1,0 +1,71 @@
+name: sanitizers
+
+# Tier C: AddressSanitizer + UndefinedBehaviorSanitizer over the DSP test
+# suite.  The plugin target is excluded so the job stays host-independent.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sanitizers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  asan-ubsan:
+    name: asan + ubsan (${{ matrix.compiler }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    env:
+      CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
+      CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1:detect_stack_use_after_return=1"
+      UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build
+
+      - name: Configure (sanitizers, tests only)
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=$CC \
+            -DCMAKE_CXX_COMPILER=$CXX \
+            -DLXX_BUILD_PLUGIN=OFF \
+            -DLXX_BUILD_TESTS=ON \
+            -DLXX_ENABLE_ASAN=ON \
+            -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined"
+
+      - name: Build
+        run: cmake --build build --parallel 2
+
+      - name: Test under sanitizers
+        run: |
+          set -euo pipefail
+          ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: No sanitizer suppressions
+        run: |
+          set -euo pipefail
+          if find . -name '*.supp' -not -path './.git/*' | grep -q .; then
+            echo "sanitizer suppression files are not allowed"; exit 1
+          fi
+          echo "ok: no suppressions"

@@ -1,0 +1,76 @@
+name: plugin-validation
+
+# VST3 validation with pluginval: strictness 5 (smoke) then strictness 10
+# (full) on the Release artefact, under a virtual display.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pluginval-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PLUGINVAL_VERSION: "1.0.3"
+
+jobs:
+  pluginval:
+    name: pluginval ${{ matrix.strictness }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        strictness: [5, 10]
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build xvfb \
+            libasound2-dev libjack-jackd2-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev \
+            libfreetype6-dev libfontconfig1-dev \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libcurl4-openssl-dev
+
+      - name: Build the VST3 (Release)
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLXX_BUILD_TESTS=OFF \
+            -DLXX_BUILD_PLUGIN=ON
+          cmake --build build --parallel 2
+          test -e build/src/plugin/LXX_artefacts/Release/VST3/LXX.vst3
+
+      - name: Fetch pluginval
+        run: |
+          set -euo pipefail
+          curl -fsSL -o pluginval.zip \
+            "https://github.com/Tracktion/pluginval/releases/download/v${PLUGINVAL_VERSION}/pluginval_Linux.zip"
+          unzip -q pluginval.zip
+          chmod +x pluginval
+          ./pluginval --version || true
+
+      - name: Validate (strictness ${{ matrix.strictness }})
+        run: |
+          set -euo pipefail
+          xvfb-run -a ./pluginval \
+            --strictness-level ${{ matrix.strictness }} \
+            --verbose \
+            --validate build/src/plugin/LXX_artefacts/Release/VST3/LXX.vst3
+
+      - name: Formats contract
+        run: bash scripts/verify-plugin-formats.sh

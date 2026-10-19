@@ -1,0 +1,97 @@
+name: public-audit
+
+# Publication gates that need no compiler: identity, formats, licensing,
+# notices, line endings, source hygiene.  This is the first gate that must be
+# green for every push.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publication-gate:
+    name: publication gate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Line endings and encoding
+        run: |
+          set -euo pipefail
+          bad=0
+          while IFS= read -r f; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.ttf|*.otf|*.png|*.jpg|*.jpeg|*.gif|*.ico|*.pdf|*.zip|*.wav) continue ;;
+            esac
+            if grep -Ilq $'\r' "$f" 2>/dev/null; then
+              echo "CRLF: $f"; bad=1
+            fi
+            if head -c3 "$f" | grep -q $'\xef\xbb\xbf'; then
+              echo "BOM: $f"; bad=1
+            fi
+          done < <(git ls-files)
+          exit $bad
+
+      - name: Shell script syntax
+        run: |
+          set -euo pipefail
+          for f in scripts/*.sh .githooks/*; do
+            [ -f "$f" ] || continue
+            bash -n "$f"
+            echo "ok: $f"
+          done
+
+      - name: Python script syntax
+        run: python3 -m py_compile scripts/inspect-source-tree.py scripts/run_clang_tidy.py
+
+      - name: Plugin format contract
+        run: bash scripts/verify-plugin-formats.sh
+
+      - name: Source tree inspection
+        run: python3 scripts/inspect-source-tree.py --root . --check
+
+      - name: Publication gate
+        env:
+          # CI has no maintainer-side denylist; everything else must pass.
+          LXX_PUBLICATION_DENYLIST: ""
+        run: bash scripts/verify-publication.sh
+
+      - name: Documentation cross-references
+        run: |
+          set -euo pipefail
+          grep -q 'THIRD_PARTY_NOTICES.md' README.md
+          grep -q 'ARCHITECTURE.md' README.md
+          grep -q 'verify-publication.sh' AGENTS.md
+          echo "ok: documentation cross-references"
+
+  identity-contract:
+    name: build identity contract
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parameter id stability
+        run: |
+          set -euo pipefail
+          test -f src/plugin/parameters/ParameterIDs.h
+          grep -q 'namespace lxx::params' src/plugin/parameters/ParameterIDs.h
+          grep -q 'static constexpr const char\* volume' src/plugin/parameters/ParameterIDs.h
+          grep -q 'bd_pitch' src/plugin/parameters/ParameterIDs.h
+          echo "ok: parameter id header present and namespaced"
+      - name: Namespace and target names
+        run: |
+          set -euo pipefail
+          if grep -rn 'namespace anushri\|anushri::' src tests --include='*.h' --include='*.cpp'; then
+            echo "stale module namespace found"; exit 1
+          fi
+          grep -q 'add_library(lxx_dsp' src/dsp/CMakeLists.txt
+          grep -q 'juce_add_plugin(LXXPlugin' src/plugin/CMakeLists.txt
+          echo "ok: LXX names throughout"

@@ -1,0 +1,45 @@
+# Build trees
+/build/
+/cmake-build-*/
+/out/
+/CMakeUserPresets.json
+compile_commands.json
+
+# Compiled and packaged artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.vst3
+*.component
+*.app
+*.dSYM/
+*.pdb
+
+# Dependency / tool caches
+/_deps/
+.deps/
+.cache/
+
+# IDE and editor state
+/.idea/
+/.vs/
+/.vscode/*
+!/.vscode/extensions.json
+*.user
+*.suo
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Generated test traces
+__pycache__/
+*.py[cod]
+/test-results/
+/artifacts/

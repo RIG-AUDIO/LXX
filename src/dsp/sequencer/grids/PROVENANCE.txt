@@ -1,0 +1,8 @@
+# Copyright 2011-2012 Emilie Gillet / Mutable Instruments
+# Host port for LXX (RIG-AUDIO) — GPLv3 or later.
+#
+# Source: https://github.com/pichenettes/eurorack (grids/)
+# Files ported: pattern_generator drum map evaluation + resources node_0..node_24
+# Upstream parent: pichenettes/eurorack (AVR = GPLv3)
+#
+# AVR/hardware/EEPROM dependencies removed; instance-based PatternGenerator.

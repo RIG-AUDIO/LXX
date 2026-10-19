@@ -1,0 +1,128 @@
+name: nightly-qualification
+
+# Nightly release-candidate gate: full compiler × build-type matrix, tests,
+# pluginval at both strictness levels, sanitizers, and the publication gate.
+# Everything required before a production VST3 could be published.
+
+on:
+  schedule:
+    - cron: "7 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qualification:
+    name: matrix ${{ matrix.compiler }} / ${{ matrix.build_type }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        build_type: [Debug, Release]
+    env:
+      CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
+      CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build xvfb curl unzip \
+            libasound2-dev libjack-jackd2-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev \
+            libfreetype6-dev libfontconfig1-dev \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libcurl4-openssl-dev
+
+      - name: Publication gate
+        run: bash scripts/verify-publication.sh
+
+      - name: Configure and build
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_C_COMPILER=$CC \
+            -DCMAKE_CXX_COMPILER=$CXX \
+            -DLXX_BUILD_TESTS=ON \
+            -DLXX_BUILD_PLUGIN=ON
+          cmake --build build --parallel 2
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: Require the VST3 artefact
+        run: |
+          set -euo pipefail
+          vst3="build/src/plugin/LXX_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
+          test -e "$vst3"
+          find "$vst3" -maxdepth 3 -type f -print | sed 's/^/  /'
+
+      - name: pluginval (strictness 10)
+        if: matrix.build_type == 'Release'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o pluginval.zip \
+            "https://github.com/Tracktion/pluginval/releases/download/v1.0.3/pluginval_Linux.zip"
+          unzip -q pluginval.zip
+          chmod +x pluginval
+          xvfb-run -a ./pluginval \
+            --strictness-level 10 \
+            --verbose \
+            --validate "build/src/plugin/LXX_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
+
+      - name: Sanitizer build and test
+        if: matrix.compiler == 'clang' && matrix.build_type == 'Debug'
+        run: |
+          set -euo pipefail
+          cmake -S . -B build-san -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DLXX_BUILD_PLUGIN=OFF \
+            -DLXX_BUILD_TESTS=ON \
+            -DLXX_ENABLE_ASAN=ON \
+            -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined"
+          cmake --build build-san --parallel 2
+          ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
+          UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
+            ctest --test-dir build-san --output-on-failure --no-tests=error
+
+      - name: Package qualification report
+        run: |
+          set -euo pipefail
+          mkdir -p qualification
+          {
+            echo "ref: $GITHUB_SHA"
+            echo "compiler: ${{ matrix.compiler }}"
+            echo "build_type: ${{ matrix.build_type }}"
+            echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo "## tracked files"
+            git ls-files | wc -l
+            echo
+            echo "## test list"
+            ctest --test-dir build -N || true
+            echo
+            echo "## vst3 sha256"
+            find build/src/plugin/LXX_artefacts -name '*.so' -o -name '*.vst3' | while read -r f; do
+              sha256sum "$f"
+            done
+          } > qualification/report-${{ matrix.compiler }}-${{ matrix.build_type }}.txt
+          cat qualification/report-${{ matrix.compiler }}-${{ matrix.build_type }}.txt
+
+      - name: Upload qualification report
+        uses: actions/upload-artifact@v4
+        with:
+          name: qualification-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: qualification/
+          if-no-files-found: error
+          retention-days: 30

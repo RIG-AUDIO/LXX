@@ -1,0 +1,32 @@
+#pragma once
+#include <cstdint>
+namespace lxx { namespace dsp { namespace grids {
+extern const uint8_t node_0[96];
+extern const uint8_t node_1[96];
+extern const uint8_t node_2[96];
+extern const uint8_t node_3[96];
+extern const uint8_t node_4[96];
+extern const uint8_t node_5[96];
+extern const uint8_t node_6[96];
+extern const uint8_t node_7[96];
+extern const uint8_t node_8[96];
+extern const uint8_t node_9[96];
+extern const uint8_t node_10[96];
+extern const uint8_t node_11[96];
+extern const uint8_t node_12[96];
+extern const uint8_t node_13[96];
+extern const uint8_t node_14[96];
+extern const uint8_t node_15[96];
+extern const uint8_t node_16[96];
+extern const uint8_t node_17[96];
+extern const uint8_t node_18[96];
+extern const uint8_t node_19[96];
+extern const uint8_t node_20[96];
+extern const uint8_t node_21[96];
+extern const uint8_t node_22[96];
+extern const uint8_t node_23[96];
+extern const uint8_t node_24[96];
+extern const uint8_t* const drum_map[5][5];
+static constexpr uint8_t kStepsPerPattern = 32;
+static constexpr uint8_t kNumParts = 3;
+}}} 

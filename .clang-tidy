@@ -1,0 +1,24 @@
+---
+# Focused checks: correctness and undefined-behaviour detectors only.
+# Stylistic and modernisation checks are deliberately excluded so that this
+# job fails on real problems rather than on taste.
+Checks: >
+  -*,
+  clang-analyzer-*,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-integer-division,
+  -bugprone-macro-parentheses,
+  -bugprone-narrowing-conversions,
+  -bugprone-signed-char-misuse,
+  concurrency-*,
+  misc-*,
+  -misc-non-private-member-variables-in-classes,
+  -misc-no-recursion,
+  performance-*,
+  -performance-unnecessary-value-param,
+  portability-*
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*/src/(dsp|plugin)/.*'
+FormatStyle: none

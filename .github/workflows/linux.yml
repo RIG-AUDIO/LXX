@@ -1,0 +1,123 @@
+name: linux
+
+# Required artifact: the LXX VST3, on every matrix entry.
+# Required gates: unit tests, and an explicit prohibition on Standalone
+# targets or Standalone artefacts anywhere in the build graph.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: ${{ matrix.compiler }} / ${{ matrix.build_type }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        build_type: [Debug, Release]
+    env:
+      CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
+      CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build \
+            libasound2-dev libjack-jackd2-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev \
+            libfreetype6-dev libfontconfig1-dev \
+            libgl1-mesa-dev libglu1-mesa-dev \
+            libcurl4-openssl-dev
+
+      - name: Verify the toolchain
+        run: |
+          set -euo pipefail
+          $CC --version
+          $CXX --version
+          cmake --version
+
+      - name: Configure
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_C_COMPILER=$CC \
+            -DCMAKE_CXX_COMPILER=$CXX \
+            -DLXX_BUILD_TESTS=ON \
+            -DLXX_BUILD_PLUGIN=ON
+
+      - name: Standalone prohibition (configured build graph)
+        run: |
+          set -euo pipefail
+          # No Standalone target may exist in the generated build graph.
+          if grep -rIl 'Standalone' build/CMakeCache.txt \
+                 build/build.ninja build/CMakeFiles 2>/dev/null \
+             | grep -v 'JUCE_VST3_CAN_REPLACE_VST2' ; then
+            echo "Standalone leaked into the configured build graph"; exit 1
+          fi
+          if find build -iname '*Standalone*' -print -quit | grep -q .; then
+            echo "Standalone path present in the build tree"; exit 1
+          fi
+          echo "ok: no Standalone target or path"
+
+      - name: Build
+        run: cmake --build build --parallel 2
+
+      - name: Test
+        run: |
+          set -euo pipefail
+          ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: Standalone prohibition (built artefacts)
+        run: |
+          set -euo pipefail
+          if find build -iname '*Standalone*' -print -quit | grep -q .; then
+            echo "Standalone artefact was built"; exit 1
+          fi
+          if find build/src/plugin -name '*.app' -print -quit | grep -q .; then
+            echo "application package produced"; exit 1
+          fi
+          if find build/src/plugin -path '*artefacts*Standalone*' -print -quit | grep -q .; then
+            echo "Standalone artefact directory produced"; exit 1
+          fi
+          echo "ok: plugin-only artefacts"
+
+      - name: Require the VST3 artefact
+        id: vst3
+        run: |
+          set -euo pipefail
+          vst3="build/src/plugin/LXX_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
+          if [ ! -e "$vst3" ]; then
+            echo "required VST3 artefact missing: $vst3"
+            find build/src/plugin -maxdepth 5 -print | sed 's/^/  /' || true
+            exit 1
+          fi
+          echo "path=$vst3" >> "$GITHUB_OUTPUT"
+          echo "ok: $vst3"
+          find "$vst3" -maxdepth 3 -type f -print | sed 's/^/  /'
+
+      - name: Upload VST3 artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LXX-vst3-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: ${{ steps.vst3.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14

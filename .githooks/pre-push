@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# pre-push guard for the LXX public repository.
+#
+# Runs the publication gate before any push and refuses pushes to any remote
+# that is not https://github.com/RIG-AUDIO/LXX.git.
+#
+# Installed by scripts/install-git-guards.sh (sets core.hooksPath = .githooks).
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+PUBLIC_REMOTE="https://github.com/RIG-AUDIO/LXX.git"
+
+if [ "$#" -ge 2 ]; then
+  remote_name="$1"
+  remote_url="$2"
+else
+  remote_name="(unknown)"
+  remote_url="$(git remote get-url "$remote_name" 2>/dev/null || echo '')"
+fi
+
+case "$remote_url" in
+  "$PUBLIC_REMOTE"|"$PUBLIC_REMOTE".git)
+    ;;
+  *)
+    if [ -n "${LXX_ALLOW_ANY_REMOTE_URL:-}" ]; then
+      printf 'pre-push: WARNING: non-public remote "%s" allowed by LXX_ALLOW_ANY_REMOTE_URL\n' "$remote_url" >&2
+    else
+      printf '\npre-push: REFUSED.\n' >&2
+      printf '  remote "%s" points at %s\n' "$remote_name" "${remote_url:-<none>}" >&2
+      printf '  Only %s may receive LXX.\n' "$PUBLIC_REMOTE" >&2
+      exit 1
+    fi
+    ;;
+esac
+
+printf 'pre-push: running the publication gate...\n'
+if ! bash "$ROOT/scripts/verify-publication.sh"; then
+  printf '\npre-push: REFUSED — publication gate failed.\n' >&2
+  exit 1
+fi
+
+printf 'pre-push: OK\n'
+exit 0

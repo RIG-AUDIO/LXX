@@ -1,0 +1,73 @@
+name: fuzz
+
+# libFuzzer over the lxx_dsp core: a short run on every pull request and a
+# longer soak on schedule.  A crash — including a non-finite rendered sample —
+# fails the job.
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "43 3 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.time }}s
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        time: [60, 600]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build clang
+
+      - name: Configure the fuzz harness
+        run: |
+          set -euo pipefail
+          cmake -S . -B build-fuzz -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DLXX_BUILD_FUZZ=ON \
+            -DLXX_BUILD_TESTS=OFF \
+            -DLXX_BUILD_PLUGIN=OFF
+
+      - name: Build
+        run: cmake --build build-fuzz --target lxx_dsp_fuzz --parallel 2
+
+      - name: Fuzz
+        run: |
+          set -euo pipefail
+          bin="build-fuzz/tests/fuzz/lxx_dsp_fuzz"
+          test -x "$bin"
+          mkdir -p artifacts
+          "$bin" \
+            -max_len=512 \
+            -timeout=5 \
+            -rss_limit_mb=2048 \
+            -max_total_time=${{ matrix.time }} \
+            -artifact_prefix="$PWD/artifacts/" \
+            2>&1 | tee fuzz.log
+
+      - name: Upload crash artefacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts-${{ matrix.time }}s
+          path: artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
