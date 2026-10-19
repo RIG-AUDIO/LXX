@@ -146,8 +146,11 @@ public:
     template <typename U, std::size_t OtherCapacity>
     void append(const FixedEventList<U, OtherCapacity>& other) noexcept
     {
-        for (std::size_t i = 0; i < other.count_ && count_ < Capacity; ++i)
-            items[count_++] = other.items[i];
+        // Only the public interface of the source list is used: the private
+        // members of another instantiation are not accessible from here.
+        const std::size_t otherCount = other.size();
+        for (std::size_t i = 0; i < otherCount && count_ < Capacity; ++i)
+            items[count_++] = other[i];
     }
 
     const T* begin() const noexcept { return items.data(); }
