@@ -126,8 +126,8 @@ public:
     std::size_t size() const noexcept { return count_; }
     static constexpr std::size_t capacity() noexcept { return Capacity; }
 
-    const T& operator[](std::size_t i) const noexcept { return items_[i]; }
-    T& operator[](std::size_t i) noexcept { return items_[i]; }
+    const T& operator[](std::size_t i) const noexcept { return items[i]; }
+    T& operator[](std::size_t i) noexcept { return items[i]; }
 
     void clear() noexcept { count_ = 0; }
 
@@ -135,22 +135,25 @@ public:
     {
         if (count_ >= Capacity)
             return false;
-        items_[count_++] = event;
+        items[count_++] = event;
         return true;
     }
 
     // Appends the contents of another list; events beyond the capacity are
     // dropped, which cannot happen within the structural bounds above.
-    void append(const FixedEventList& other) noexcept
+    // The source list may have a different capacity (the drum step list holds
+    // kNumDrumParts entries, the transport list holds a whole block).
+    template <typename U, std::size_t OtherCapacity>
+    void append(const FixedEventList<U, OtherCapacity>& other) noexcept
     {
         for (std::size_t i = 0; i < other.count_ && count_ < Capacity; ++i)
-            items_[count_++] = other.items_[i];
+            items[count_++] = other.items[i];
     }
 
-    const T* begin() const noexcept { return items_.data(); }
-    const T* end() const noexcept { return items_.data() + count_; }
-    T* begin() noexcept { return items_.data(); }
-    T* end() noexcept { return items_.data() + count_; }
+    const T* begin() const noexcept { return items.data(); }
+    const T* end() const noexcept { return items.data() + count_; }
+    T* begin() noexcept { return items.data(); }
+    T* end() noexcept { return items.data() + count_; }
 
 private:
     std::array<T, Capacity> items {};
@@ -163,8 +166,8 @@ static constexpr std::size_t kMaxArpEventsPerBlock = kMaxStepPulsesPerBlock;
 static constexpr std::size_t kMaxSequenceEventsPerBlock = kMaxStepPulsesPerBlock;
 // Structural bound is kMaxStepPulsesPerBlock * kNumDrumParts == 48; the extra
 // headroom keeps the list safe if a host ever delivers an extra pulse, and it
-// stays below the 96-event engine buffer (kMaxDrumEventsPerBlock).
-static constexpr std::size_t kMaxDrumEventsPerBlock = 64;
+// stays below the 96-event engine buffer (drum_events.h).
+static constexpr std::size_t kMaxTransportDrumEvents = 64;
 static constexpr std::size_t kMaxArpEventsPerStep = 4;
 static constexpr std::size_t kMaxSequenceEventsPerStep = 1;
 

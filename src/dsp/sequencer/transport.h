@@ -19,7 +19,7 @@ namespace dsp {
 struct TransportEvents {
     FixedEventList<ArpNoteEvent, kMaxArpEventsPerBlock> arp;
     FixedEventList<SeqNoteEvent, kMaxSequenceEventsPerBlock> sequence;
-    FixedEventList<DrumHitEvent, kMaxDrumEventsPerBlock> drums;
+    FixedEventList<DrumHitEvent, kMaxTransportDrumEvents> drums;
     bool stepPulse = false;
     bool releaseHeldArp = false;
 };
