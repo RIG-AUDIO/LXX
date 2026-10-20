@@ -62,7 +62,8 @@ jobs:
             -DCMAKE_C_COMPILER=$CC \
             -DCMAKE_CXX_COMPILER=$CXX \
             -DLXX_BUILD_TESTS=ON \
-            -DLXX_BUILD_PLUGIN=ON
+            -DLXX_BUILD_PLUGIN=ON \
+            -DLXX_WARNINGS_AS_ERRORS=ON
 
       - name: Standalone prohibition (configured build graph)
         run: |
@@ -163,4 +164,15 @@ jobs:
           name: LXX-vst3-${{ matrix.compiler }}-${{ matrix.build_type }}
           path: ${{ steps.vst3.outputs.path }}
           if-no-files-found: error
+          retention-days: 14
+
+      # Full stdout of every test (including passing ones): measured wall
+      # times, budgets and counters live here, not only on failure.
+      - name: Upload CTest log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: build/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
           retention-days: 14

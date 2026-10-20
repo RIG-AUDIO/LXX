@@ -36,6 +36,7 @@ foreach(test_src ${TEST_SOURCES})
     target_link_libraries(${test_name} PRIVATE lxx_dsp)
     target_compile_definitions(${test_name} PRIVATE
         LXX_TEST_TIME_SCALE=${LXX_TEST_TIME_SCALE})
+    lxx_werror(${test_name})
     add_test(NAME ${test_name} COMMAND ${test_name})
     set_tests_properties(${test_name} PROPERTIES TIMEOUT ${LXX_TEST_TIMEOUT})
 endforeach()

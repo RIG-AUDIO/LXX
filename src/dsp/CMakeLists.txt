@@ -44,6 +44,7 @@ if(MSVC)
 else()
     target_compile_options(lxx_dsp PRIVATE -Wall -Wextra -Wpedantic -Wno-unused-parameter)
 endif()
+lxx_werror(lxx_dsp)
 
 # Install headers
 file(GLOB_RECURSE DSP_HEADERS
