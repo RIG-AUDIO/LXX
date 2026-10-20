@@ -54,6 +54,13 @@ if(LXX_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# The fuzz harness is driven by its own workflow with LXX_BUILD_TESTS=OFF, so
+# it is added from here rather than from tests/ (which is not configured in
+# that mode).  It is built only when explicitly requested.
+if(LXX_BUILD_FUZZ)
+    add_subdirectory(tests/fuzz)
+endif()
+
 if(LXX_BUILD_PLUGIN)
     include(FetchContent)
     FetchContent_Declare(

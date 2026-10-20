@@ -40,10 +40,6 @@ foreach(test_src ${TEST_SOURCES})
     set_tests_properties(${test_name} PROPERTIES TIMEOUT ${LXX_TEST_TIMEOUT})
 endforeach()
 
-if(LXX_BUILD_FUZZ)
-    add_subdirectory(fuzz)
-endif()
-
 # dr_wav for WAV I/O (header-only, fetched if needed)
 find_package(drwav QUIET)
 if(NOT drwav_FOUND)
