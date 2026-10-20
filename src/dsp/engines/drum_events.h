@@ -82,7 +82,7 @@ inline int midiNoteForVoice(DrumVoice v) noexcept
         case DrumVoice::midPerc: return kMidiNoteMidPerc;
         case DrumVoice::hat: return kMidiNoteHat;
         case DrumVoice::openHat: return kMidiNoteOpenHat;
-        default: break;
+        case DrumVoice::count: break;  // sentinel, never a real voice
     }
     return kMidiNoteKick;
 }
@@ -104,7 +104,11 @@ inline int legacyPartForVoice(DrumVoice v) noexcept
         case DrumVoice::kick: return 0;
         case DrumVoice::snare: return 1;
         case DrumVoice::hat: return 2;
-        default: return -1;
+        case DrumVoice::lowTom:
+        case DrumVoice::midPerc:
+        case DrumVoice::openHat:
+        case DrumVoice::count:
+            return -1;  // extended-only parts have no legacy part
     }
 }
 

@@ -3,7 +3,6 @@
 namespace lxx::ui {
 
 LXXKnob::LXXKnob(const juce::String& label, KnobSize size)
-    : size_(size)
 {
     label_.setText(label, juce::dontSendNotification);
     label_.setJustificationType(juce::Justification::centred);

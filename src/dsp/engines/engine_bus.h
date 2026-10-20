@@ -116,8 +116,8 @@ public:
             case DrumVoice::openHat:
                 extended_.triggerOpenHat(velocity01);
                 break;
-            default:
-                break;
+            case DrumVoice::count:
+                break;  // sentinel, never a real voice
         }
     }
 

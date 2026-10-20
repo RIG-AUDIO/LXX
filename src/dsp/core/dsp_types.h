@@ -103,12 +103,12 @@ inline Sample fast_exp(Sample x) {
 inline Sample fast_log2(Sample x) {
     union { int32_t i; Sample f; } v;
     v.f = x;
-    return (v.i - (127 << 23)) * (1.0f / (1 << 23));
+    return static_cast<float>(v.i - (127 << 23)) * (1.0f / (1 << 23));
 }
 
 // MIDI note to frequency (equal temperament)
 inline Sample midiToFreq(int note) {
-    return kMidiA4Freq * std::pow(2.0f, (note - kMidiA4Note) / 12.0f);
+    return kMidiA4Freq * std::pow(2.0f, static_cast<float>(note - kMidiA4Note) / 12.0f);
 }
 
 // Frequency to MIDI note (continuous)
@@ -129,7 +129,7 @@ inline Sample halfVoltPerOctToFreq(Sample volts, Sample refFreq = 440.0f, Sample
 // Linear interpolation for lookup tables
 inline Sample interpolateTable(const Sample* table, size_t tableSize, Sample index) {
     if (index <= 0.0f) return table[0];
-    if (index >= tableSize - 1) return table[tableSize - 1];
+    if (index >= static_cast<Sample>(tableSize - 1)) return table[tableSize - 1];
     
     size_t i = static_cast<size_t>(index);
     Sample frac = index - static_cast<Sample>(i);

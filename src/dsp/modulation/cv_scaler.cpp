@@ -143,8 +143,8 @@ Sample VoltPerOctaveScaler::voltsToNote(Sample volts) const {
 }
 
 // HalfVoltPerOctaveScaler implementation
-HalfVoltPerOctaveScaler::HalfVoltPerOctaveScaler(Sample refVolts, Sample refFreq, Sample refNote)
-    : refVolts_(refVolts), refFreq_(refFreq), refNote_(refNote) {}
+HalfVoltPerOctaveScaler::HalfVoltPerOctaveScaler(Sample refVolts, Sample refFreq, Sample)
+    : refVolts_(refVolts), refFreq_(refFreq) {}
 
 Sample HalfVoltPerOctaveScaler::voltsToFreq(Sample volts) const {
     return refFreq_ * std::pow(2.0f, (volts - refVolts_) * (kSemitonesPerVolt * 0.5f));

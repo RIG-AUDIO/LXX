@@ -73,7 +73,8 @@ void DrumSynth::init(float sampleRate) {
 }
 
 void DrumSynth::reset() {
-    std::memset(state_, 0, sizeof(state_));
+    for (auto& s : state_)
+        s = DrumState{};
     sample_ = 128;
     sampleCounter_ = 0;
     sampleRateHold_ = 0;

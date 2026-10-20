@@ -51,7 +51,8 @@ public:
 
     void reset()
     {
-        std::memset(state_, 0, sizeof(state_));
+        for (auto& s : state_)
+            s = DrumState{};
         ohScale_ = 1.0f;
         noise_ = 0;
         playing_ = false;
@@ -286,7 +287,8 @@ private:
                 st.pitch_env_increment = 0;
             }
 
-            uint16_t pitch = static_cast<uint16_t>(patch_[i].pitch) << 8;
+            uint16_t pitch = static_cast<uint16_t>(
+                static_cast<uint16_t>(patch_[i].pitch) << 8);
             pitch = static_cast<uint16_t>(
                 pitch + static_cast<uint16_t>(patch_[i].pitch_mod)
                     * interpolateSample(drum_resources::wav_res_drm_envelope.data(),
