@@ -118,7 +118,8 @@ public:
 
     void clear() {
         size_ = 0;
-        std::memset(pool_, 0, sizeof(pool_));
+        for (auto& entry : pool_)
+            entry = NoteEntry{};
         std::memset(sortedPtr_, 0, sizeof(sortedPtr_));
         rootPtr_ = 0;
         for (uint8_t i = 0; i <= kCapacity; ++i)

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
-#include <vector>
 
 #include "voice/note_stack.h"
 #include "sequencer/sequencer_resources.h"
@@ -23,7 +21,7 @@ public:
     bool hasArpeggiator() const { return settings_.arpMode != 0 && pressedKeys_.size() > 0; }
 
     // Called once per transport step pulse.
-    std::vector<ArpNoteEvent> clockStep(uint8_t randomByte);
+    FixedEventList<ArpNoteEvent, kMaxArpEventsPerStep> clockStep(uint8_t randomByte);
 
     uint8_t patternStep() const { return patternStep_; }
     uint16_t patternMask() const { return patternMask_; }

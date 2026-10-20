@@ -14,9 +14,9 @@ void StepSequencer::stop()
     running_ = false;
 }
 
-std::vector<SeqNoteEvent> StepSequencer::clockStep()
+FixedEventList<SeqNoteEvent, kMaxSequenceEventsPerStep> StepSequencer::clockStep()
 {
-    std::vector<SeqNoteEvent> events;
+    FixedEventList<SeqNoteEvent, kMaxSequenceEventsPerStep> events;
     if (!running_ || sequence_.numNotes == 0) {
         return events;
     }
@@ -40,7 +40,7 @@ std::vector<SeqNoteEvent> StepSequencer::clockStep()
         event.gate = true;
     }
 
-    events.push_back(event);
+    events.push(event);
 
     ++stepIndex_;
     if (stepIndex_ >= sequence_.numNotes) {

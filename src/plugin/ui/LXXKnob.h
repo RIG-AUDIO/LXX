@@ -24,7 +24,6 @@ class LXXKnob : public juce::Component {
  private:
     juce::Label label_;
     juce::Slider slider_;
-    KnobSize size_ = KnobSize::standard;
     bool accentHot_ = false;
     bool extendedStyle_ = false;
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 
 namespace lxx {
@@ -110,6 +111,68 @@ struct DrumHitEvent {
     uint8_t part = 0;
     uint8_t level = 0;
 };
+
+// Allocation-free event list.
+//
+// The sequencer runs on the audio thread, so the event lists it hands around
+// must never touch the heap.  Capacities come from the structural bounds of
+// the transport: at most 16 step pulses per audio block (see
+// SequencerTransport::processInternalClock) and at most kNumDrumParts drum
+// parts per step.
+template <typename T, std::size_t Capacity>
+class FixedEventList {
+public:
+    bool empty() const noexcept { return count_ == 0; }
+    std::size_t size() const noexcept { return count_; }
+    static constexpr std::size_t capacity() noexcept { return Capacity; }
+
+    const T& operator[](std::size_t i) const noexcept { return items[i]; }
+    T& operator[](std::size_t i) noexcept { return items[i]; }
+
+    void clear() noexcept { count_ = 0; }
+
+    bool push(const T& event) noexcept
+    {
+        if (count_ >= Capacity)
+            return false;
+        items[count_++] = event;
+        return true;
+    }
+
+    // Appends the contents of another list; events beyond the capacity are
+    // dropped, which cannot happen within the structural bounds above.
+    // The source list may have a different capacity (the drum step list holds
+    // kNumDrumParts entries, the transport list holds a whole block).
+    template <typename U, std::size_t OtherCapacity>
+    void append(const FixedEventList<U, OtherCapacity>& other) noexcept
+    {
+        // Only the public interface of the source list is used: the private
+        // members of another instantiation are not accessible from here.
+        const std::size_t otherCount = other.size();
+        for (std::size_t i = 0; i < otherCount && count_ < Capacity; ++i)
+            items[count_++] = other[i];
+    }
+
+    const T* begin() const noexcept { return items.data(); }
+    const T* end() const noexcept { return items.data() + count_; }
+    T* begin() noexcept { return items.data(); }
+    T* end() noexcept { return items.data() + count_; }
+
+private:
+    std::array<T, Capacity> items {};
+    std::size_t count_ = 0;
+};
+
+// Structural bounds of the transport, used as list capacities.
+static constexpr std::size_t kMaxStepPulsesPerBlock = 16;
+static constexpr std::size_t kMaxArpEventsPerBlock = kMaxStepPulsesPerBlock;
+static constexpr std::size_t kMaxSequenceEventsPerBlock = kMaxStepPulsesPerBlock;
+// Structural bound is kMaxStepPulsesPerBlock * kNumDrumParts == 48; the extra
+// headroom keeps the list safe if a host ever delivers an extra pulse, and it
+// stays below the 96-event engine buffer (drum_events.h).
+static constexpr std::size_t kMaxTransportDrumEvents = 64;
+static constexpr std::size_t kMaxArpEventsPerStep = 4;
+static constexpr std::size_t kMaxSequenceEventsPerStep = 1;
 
 }  // namespace dsp
 }  // namespace lxx

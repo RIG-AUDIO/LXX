@@ -179,8 +179,8 @@ TransportEvents SequencerTransport::dispatchStep(uint8_t)
     events.stepPulse = true;
 
     if (running_) {
-        auto drumEvents = drumSequencer_.clockStep(settings_, running_, &randomState_);
-        events.drums.insert(events.drums.end(), drumEvents.begin(), drumEvents.end());
+        const auto drumEvents = drumSequencer_.clockStep(settings_, running_, &randomState_);
+        events.drums.append(drumEvents);
     }
 
     return events;
@@ -214,9 +214,9 @@ TransportEvents SequencerTransport::processInternalClock(uint32_t numSamples)
         ++pulses;
         randomState_ = randomState_ * 1664525u + 1013904223u;
         const auto stepEvents = dispatchStep(static_cast<uint8_t>((randomState_ >> 24) & 0xff));
-        events.arp.insert(events.arp.end(), stepEvents.arp.begin(), stepEvents.arp.end());
-        events.sequence.insert(events.sequence.end(), stepEvents.sequence.begin(), stepEvents.sequence.end());
-        events.drums.insert(events.drums.end(), stepEvents.drums.begin(), stepEvents.drums.end());
+        events.arp.append(stepEvents.arp);
+        events.sequence.append(stepEvents.sequence);
+        events.drums.append(stepEvents.drums);
         events.stepPulse = events.stepPulse || stepEvents.stepPulse;
     }
     return events;
@@ -283,9 +283,9 @@ TransportEvents SequencerTransport::processHostClock(uint32_t numSamples, const 
     for (int64_t i = 0; i < delta; ++i) {
         randomState_ = randomState_ * 1664525u + 1013904223u;
         const auto stepEvents = dispatchStep(static_cast<uint8_t>((randomState_ >> 24) & 0xff));
-        events.arp.insert(events.arp.end(), stepEvents.arp.begin(), stepEvents.arp.end());
-        events.sequence.insert(events.sequence.end(), stepEvents.sequence.begin(), stepEvents.sequence.end());
-        events.drums.insert(events.drums.end(), stepEvents.drums.begin(), stepEvents.drums.end());
+        events.arp.append(stepEvents.arp);
+        events.sequence.append(stepEvents.sequence);
+        events.drums.append(stepEvents.drums);
         events.stepPulse = true;
     }
     lastHostStep_ = step;

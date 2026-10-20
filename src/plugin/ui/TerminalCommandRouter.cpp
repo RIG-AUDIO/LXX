@@ -544,7 +544,8 @@ bool TerminalCommandRouter::tryExecute(const juce::String& lineIn,
         mutateSeed(apvts, juce::jmax(1, amt / 2), feedback);
         if (!getBool(apvts, IDs::lockSeq) && amt > 15)
             setFloat01(apvts, IDs::technoVariation,
-                       nudge(getRaw(apvts, IDs::technoVariation), 0.05f, 0.9f, amt * 0.0035f));
+                       nudge(getRaw(apvts, IDs::technoVariation), 0.05f, 0.9f,
+                             static_cast<float>(amt) * 0.0035f));
         return true;
     }
     auto macro = [&](const char* id, const juce::String& label) -> bool {

@@ -143,7 +143,6 @@ public:
 private:
     Sample refVolts_;
     Sample refFreq_;
-    Sample refNote_;
 };
 
 } // namespace dsp

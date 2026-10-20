@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include "test_time_budget.h"
 #include <algorithm>
 #include <vector>
 
@@ -75,7 +76,9 @@ void testVoiceNoteSequence()
         voice.processBlock(buf.data(), buf.size());
         transitions += 5;
         const auto wall = seconds(t0, Clock::now());
-        if (wall > 120.0) {
+        if (wall > lxx::test::timeBudget(120.0)) {
+            std::printf("FAIL: voice stress watchdog wall=%.2fs budget=%.2fs\n",
+                        wall, lxx::test::timeBudget(120.0));
             expectTrue(false, "voice stress watchdog (hung)");
             return;
         }
@@ -220,7 +223,7 @@ void testLongRun()
         auto b0 = Clock::now();
         voice.processBlock(buf.data(), static_cast<size_t>(kBlock));
         auto b1 = Clock::now();
-        if (seconds(b0, b1) > 0.1) {
+        if (seconds(b0, b1) > lxx::test::timeBudget(0.1)) {
             std::printf("FAIL: processBlock watchdog block=%zu notes=%d\n", blocks, notes);
             ++failures;
             return;
@@ -251,7 +254,7 @@ void testLongRun()
     expectTrue(nan == 0 && inf == 0, "no NaN/Inf in long run");
     expectTrue(maxAbs < 8.0f, "long-run amplitude bounded");
     expectTrue(std::abs(mean) < 0.05f, "no pathological DC");
-    expectTrue(wall < 180.0, "long-run completed without hang");
+    expectTrue(wall < lxx::test::timeBudget(180.0), "long-run completed without hang");
 }
 
 void testTransportJump()
@@ -268,7 +271,9 @@ void testTransportJump()
     auto t0 = Clock::now();
     (void)t.processBlock(48000 * 5);
     const double wall = seconds(t0, Clock::now());
-    expectTrue(wall < 2.0, "5s catch-up bounded");
+    std::printf("  transport catch-up wall=%.4fs budget=%.2fs\n",
+                wall, lxx::test::timeBudget(2.0));
+    expectTrue(wall < lxx::test::timeBudget(2.0), "5s catch-up bounded");
     t.stop();
 }
 

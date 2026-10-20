@@ -6,7 +6,9 @@ name: sanitizers
 on:
   pull_request:
   push:
-    branches: [main]
+    # Sanitizer coverage is required on every branch: a UBSan finding must be
+    # fixed on the branch that introduced it, not discovered after a merge.
+    branches: ["**"]
   workflow_dispatch:
   schedule:
     - cron: "17 4 * * 1"
@@ -69,3 +71,37 @@ jobs:
             echo "sanitizer suppression files are not allowed"; exit 1
           fi
           echo "ok: no suppressions"
+
+      # Hardware-assisted AddressSanitizer capability probe.  Informational:
+      # the verdict is printed into the log and recorded in
+      # docs/engineering/OPEN_FINDINGS.md — a surprising answer is data, not
+      # a build failure.
+      - name: HWASan availability probe
+        if: matrix.compiler == 'clang'
+        run: |
+          set -euo pipefail
+          echo "arch: $(uname -m)"
+          grep -m1 'model name' /proc/cpuinfo || true
+          if grep -qw lam /proc/cpuinfo; then echo "cpu flag lam: present"; else echo "cpu flag lam: absent"; fi
+          cat > hwasan_probe.cpp <<'EOF'
+          int main() { return 0; }
+          EOF
+          if clang++ -fsanitize=hwaddress hwasan_probe.cpp -o hwasan_probe 2> hwasan_probe_build.log; then
+            if ./hwasan_probe; then
+              echo "HWASan: SUPPORTED on this runner (x86_64 experimental path)"
+            else
+              echo "HWASan: UNSUPPORTED — ENVIRONMENT REQUIREMENTS NOT MET (builds, does not run)"
+            fi
+          else
+            echo "HWASan: UNSUPPORTED — ENVIRONMENT REQUIREMENTS NOT MET (rejected by the toolchain)"
+            sed -n '1,10p' hwasan_probe_build.log
+          fi
+
+      - name: Upload CTest log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-asan-ubsan-${{ matrix.compiler }}
+          path: build/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
+          retention-days: 14

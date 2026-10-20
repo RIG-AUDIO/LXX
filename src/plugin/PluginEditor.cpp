@@ -17,8 +17,8 @@ namespace lxx {
 using namespace params;
 using namespace ui;
 
-LXXAudioProcessorEditor::LXXAudioProcessorEditor(LXXAudioProcessor& processor)
-    : juce::AudioProcessorEditor(processor), processor_(processor)
+LXXAudioProcessorEditor::LXXAudioProcessorEditor(LXXAudioProcessor& processorRef)
+    : juce::AudioProcessorEditor(processorRef), processor_(processorRef)
 {
     setLookAndFeel(&lookAndFeel_);
     constrainer_.setSizeLimits(Layout::minWidth, Layout::minHeight, Layout::maxWidth, Layout::maxHeight);

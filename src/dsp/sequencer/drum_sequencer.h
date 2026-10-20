@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cstdint>
-#include <vector>
 
 #include "sequencer/sequencer_types.h"
 
@@ -12,9 +11,10 @@ namespace dsp {
 class DrumSequencer {
 public:
     void start();
-    std::vector<DrumHitEvent> clockStep(const SequencerSettings& settings,
-                                          bool sequencerRunning,
-                                          uint32_t* rngState = nullptr);
+    // At most one hit per drum part, so the list never needs the heap.
+    FixedEventList<DrumHitEvent, kNumDrumParts> clockStep(const SequencerSettings& settings,
+                                                            bool sequencerRunning,
+                                                            uint32_t* rngState = nullptr);
 
     uint8_t currentStep() const { return step_; }
 

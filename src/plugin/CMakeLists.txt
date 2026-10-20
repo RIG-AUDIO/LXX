@@ -52,13 +52,19 @@ target_link_libraries(LXXPlugin
         juce::juce_audio_utils
     PUBLIC
         juce::juce_recommended_config_flags
-        juce::juce_recommended_lto_flags
+        # juce::juce_recommended_lto_flags is deliberately NOT linked.  With
+        # clang it adds -flto to the link line while the plugin's object set is
+        # not consistently LTO, and the VST3 link then fails with unresolved
+        # juce:: symbols (JucePluginFactory::createInstance, juce::Colour,
+        # juce::AudioChannelSet::ambisonic, ...).  LTO changes no audio output
+        # and buys nothing here, so the build stays homogeneous.
         juce::juce_recommended_warning_flags
 )
 
 if(MSVC)
     target_compile_options(LXXPlugin PRIVATE /W4 /permissive-)
 endif()
+lxx_werror(LXXPlugin)
 
 juce_add_console_app(LXXHostRuntimeTest PRODUCT_NAME "LXXHostRuntimeTest")
 juce_generate_juce_header(LXXHostRuntimeTest)
@@ -107,3 +113,4 @@ target_link_libraries(LXXHostRuntimeTest
 if(MSVC)
     target_compile_options(LXXHostRuntimeTest PRIVATE /W4 /permissive-)
 endif()
+lxx_werror(LXXHostRuntimeTest)

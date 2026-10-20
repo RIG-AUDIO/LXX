@@ -14,10 +14,6 @@ int16_t noteToPitchUnits(uint8_t note) {
     return static_cast<int16_t>(note) * 128;
 }
 
-Sample centsToRatio(Sample cents) {
-    return std::pow(2.0f, cents / 1200.0f);
-}
-
 // Firmware S8U8MulShift8 style: (signed8 * unsigned8) >> 8
 Sample mulS8U8Shift8(int8_t a, uint8_t b) {
     return static_cast<Sample>(a) * static_cast<Sample>(b) / 256.0f;

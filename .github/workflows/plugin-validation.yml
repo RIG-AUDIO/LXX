@@ -53,7 +53,7 @@ jobs:
             -DLXX_BUILD_TESTS=OFF \
             -DLXX_BUILD_PLUGIN=ON
           cmake --build build --parallel 2
-          test -e build/src/plugin/LXX_artefacts/Release/VST3/LXX.vst3
+          test -e build/src/plugin/LXXPlugin_artefacts/Release/VST3/LXX.vst3
 
       - name: Fetch pluginval
         run: |
@@ -70,7 +70,7 @@ jobs:
           xvfb-run -a ./pluginval \
             --strictness-level ${{ matrix.strictness }} \
             --verbose \
-            --validate build/src/plugin/LXX_artefacts/Release/VST3/LXX.vst3
+            --validate build/src/plugin/LXXPlugin_artefacts/Release/VST3/LXX.vst3
 
       - name: Formats contract
         run: bash scripts/verify-plugin-formats.sh

@@ -105,7 +105,6 @@ private:
     Lfo vibratoLfo_;
 
     VcoCvScaler vcoScaler_;
-    VcfCvScaler vcfScaler_;
 
     int16_t dcoPitch_ = 0;
     Sample pitchBendSemitones_ = 0.0f;

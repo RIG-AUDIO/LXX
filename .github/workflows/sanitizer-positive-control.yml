@@ -1,0 +1,122 @@
+name: sanitizer-positive-control
+
+# P5 positive control: prove the sanitizer stage can actually fail.
+#
+# A throwaway test with deliberate, well-understood undefined behaviour is
+# written into this runner's workspace at run time (never committed), built
+# with the exact flags and environment of sanitizers.yml, and executed.
+# The job PASSES ONLY IF THE SANITIZER DETECTS THE INJECTED UB — an inverted
+# assertion.  If a future toolchain change silently stops the stage from
+# detecting UB, this job goes red while the main suite stays green.
+
+on:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "31 4 * * 3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: positive-control-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    name: ${{ matrix.compiler }} detects injected UB
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+    env:
+      CC: ${{ matrix.compiler == 'gcc' && 'gcc' || 'clang' }}
+      CXX: ${{ matrix.compiler == 'gcc' && 'g++' || 'clang++' }}
+      ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:strict_string_checks=1:detect_stack_use_after_return=1"
+      UBSAN_OPTIONS: "print_stacktrace=1:halt_on_error=1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build
+
+      - name: Inject a deliberate runtime UB (workspace only)
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -q 'test_lxx_positive_control'; then
+            echo "::error::the positive-control source must never be committed"
+            exit 1
+          fi
+          cat > tests/test_lxx_positive_control.cpp <<'EOF'
+          // Deliberate undefined behaviour, written only into this runner's
+          // workspace by .github/workflows/sanitizer-positive-control.yml.
+          // It is never part of the committed tree.
+          //
+          // Purpose: make the sanitizer stage fail on purpose, so the stage
+          // itself is under test (positive control).  Built with the exact
+          // flags and environment of sanitizers.yml.
+          //
+          // The signed overflow fires first; with UBSan halt the process
+          // stops there.  The heap overrun is reached only in an
+          // ASan-only configuration, where AddressSanitizer must catch it.
+          #include <cstdio>
+
+          int main()
+          {
+              volatile int peak = 2147483647;  // INT_MAX
+              peak = peak + 1;                 // UBSan: signed integer overflow
+
+              volatile int* heap = new volatile int[4];
+              heap[4] = 1;                     // ASan: heap-buffer-overflow
+              delete[] heap;
+
+              std::printf("positive control: no sanitizer fired\n");
+              return 0;
+          }
+          EOF
+          test -s tests/test_lxx_positive_control.cpp
+          echo "ok: throwaway UB test written (not tracked by git)"
+
+      - name: Configure (identical to sanitizers.yml)
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER=$CC \
+            -DCMAKE_CXX_COMPILER=$CXX \
+            -DLXX_BUILD_PLUGIN=OFF \
+            -DLXX_BUILD_TESTS=ON \
+            -DLXX_ENABLE_ASAN=ON \
+            -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined"
+
+      - name: Build the positive-control test
+        run: cmake --build build --target test_lxx_positive_control --parallel 2
+
+      - name: Require the sanitizer to catch it
+        run: |
+          set -euo pipefail
+          log=positive-control.log
+          set +e
+          ./build/tests/test_lxx_positive_control > "$log" 2>&1
+          code=$?
+          set -e
+          sed -n '1,30p' "$log"
+          if [ "$code" -eq 0 ]; then
+            echo "::error::positive control FAILED: the sanitizer did not halt the injected UB"
+            exit 1
+          fi
+          if ! grep -q 'runtime error:' "$log"; then
+            echo "::error::positive control FAILED: no UBSan 'runtime error:' diagnostic"
+            exit 1
+          fi
+          if ! grep -q 'signed integer overflow' "$log"; then
+            echo "::error::positive control FAILED: expected a signed-integer-overflow diagnostic"
+            exit 1
+          fi
+          echo "ok: sanitizer detected the injected UB (exit=$code, ${{ matrix.compiler }})"

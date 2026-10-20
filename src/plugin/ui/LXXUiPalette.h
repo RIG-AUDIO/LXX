@@ -72,8 +72,8 @@ struct Layout {
     {
         const int inner = area.getWidth() - (columns - 1) * colGap;
         const float cw = static_cast<float>(inner) / static_cast<float>(columns);
-        const int x = area.getX() + juce::roundToInt(startCol * (cw + static_cast<float>(colGap)));
-        const int w = juce::jmax(1, juce::roundToInt(span * cw + static_cast<float>(span - 1) * colGap));
+        const int x = area.getX() + juce::roundToInt(static_cast<float>(startCol) * (cw + static_cast<float>(colGap)));
+        const int w = juce::jmax(1, juce::roundToInt(static_cast<float>(span) * cw + static_cast<float>(span - 1) * colGap));
         return { x, area.getY(), w, area.getHeight() };
     }
 };

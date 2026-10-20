@@ -36,6 +36,25 @@ option(LXX_BUILD_TESTS  "Build the lxx_dsp test executables" ON)
 option(LXX_BUILD_PLUGIN "Build the LXX VST3 plugin"          ON)
 option(LXX_ENABLE_ASAN  "AddressSanitizer build (never for shipping)" OFF)
 option(LXX_BUILD_FUZZ   "Build the libFuzzer harness (Clang only)"     OFF)
+option(LXX_WARNINGS_AS_ERRORS "Treat first-party warnings as errors"  OFF)
+
+# lxx_werror(<target>) — apply -Werror to ONE first-party target.
+#
+# Per-target on purpose: JUCE, the VST3 SDK and every other third-party
+# target are never passed through this function, so upstream warnings stay
+# non-fatal while our own translation units are held to zero warnings.
+# This follows the opt-in, per-target pattern of an external diagnostics
+# module (no global CMAKE_CXX_FLAGS mutation).
+function(lxx_werror target)
+    if(NOT LXX_WARNINGS_AS_ERRORS)
+        return()
+    endif()
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /WX)
+    else()
+        target_compile_options(${target} PRIVATE -Werror)
+    endif()
+endfunction()
 
 if(LXX_ENABLE_ASAN)
     if(MSVC)
@@ -52,6 +71,13 @@ add_subdirectory(src/dsp)
 if(LXX_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+# The fuzz harness is driven by its own workflow with LXX_BUILD_TESTS=OFF, so
+# it is added from here rather than from tests/ (which is not configured in
+# that mode).  It is built only when explicitly requested.
+if(LXX_BUILD_FUZZ)
+    add_subdirectory(tests/fuzz)
 endif()
 
 if(LXX_BUILD_PLUGIN)

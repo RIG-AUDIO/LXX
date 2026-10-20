@@ -42,6 +42,12 @@ jobs:
             libcurl4-openssl-dev
 
       - name: Publication gate
+        env:
+          # CI has no maintainer-side denylist; everything else must pass.
+          LXX_PUBLICATION_DENYLIST: ""
+          # The identity check verifies this token addresses RIG-AUDIO/LXX.
+          # The script never prints it.
+          GH_TOKEN: ${{ github.token }}
         run: bash scripts/verify-publication.sh
 
       - name: Configure and build
@@ -61,7 +67,7 @@ jobs:
       - name: Require the VST3 artefact
         run: |
           set -euo pipefail
-          vst3="build/src/plugin/LXX_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
+          vst3="build/src/plugin/LXXPlugin_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
           test -e "$vst3"
           find "$vst3" -maxdepth 3 -type f -print | sed 's/^/  /'
 
@@ -76,7 +82,7 @@ jobs:
           xvfb-run -a ./pluginval \
             --strictness-level 10 \
             --verbose \
-            --validate "build/src/plugin/LXX_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
+            --validate "build/src/plugin/LXXPlugin_artefacts/${{ matrix.build_type }}/VST3/LXX.vst3"
 
       - name: Sanitizer build and test
         if: matrix.compiler == 'clang' && matrix.build_type == 'Debug'
@@ -113,7 +119,7 @@ jobs:
             ctest --test-dir build -N || true
             echo
             echo "## vst3 sha256"
-            find build/src/plugin/LXX_artefacts -name '*.so' -o -name '*.vst3' | while read -r f; do
+            find build/src/plugin/LXXPlugin_artefacts -type f \( -name '*.so' -o -name '*.vst3' \) | while read -r f; do
               sha256sum "$f"
             done
           } > qualification/report-${{ matrix.compiler }}-${{ matrix.build_type }}.txt
@@ -125,4 +131,15 @@ jobs:
           name: qualification-${{ matrix.compiler }}-${{ matrix.build_type }}
           path: qualification/
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload CTest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-nightly-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build-san/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
           retention-days: 30
