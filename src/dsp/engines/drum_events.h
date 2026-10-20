@@ -110,6 +110,7 @@ inline int legacyPartForVoice(DrumVoice v) noexcept
         case DrumVoice::count:
             return -1;  // extended-only parts have no legacy part
     }
+    return -1;  // unreachable when the switch is exhaustive; every path returns
 }
 
 inline DrumVoice voiceFromLegacyPart(uint8_t part) noexcept
