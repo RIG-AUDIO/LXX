@@ -95,6 +95,7 @@ required_files=(
   .github/workflows/static-analysis.yml
   .github/workflows/fuzz.yml
   .github/workflows/nightly-qualification.yml
+  .github/workflows/sanitizer-positive-control.yml
 )
 for f in "${required_files[@]}"; do
   if [ -e "$ROOT/$f" ]; then ok "present: $f"; else err "missing: $f"; fi

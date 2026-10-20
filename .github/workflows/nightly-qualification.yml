@@ -119,7 +119,7 @@ jobs:
             ctest --test-dir build -N || true
             echo
             echo "## vst3 sha256"
-            find build/src/plugin/LXXPlugin_artefacts -name '*.so' -o -name '*.vst3' | while read -r f; do
+            find build/src/plugin/LXXPlugin_artefacts -type f \( -name '*.so' -o -name '*.vst3' \) | while read -r f; do
               sha256sum "$f"
             done
           } > qualification/report-${{ matrix.compiler }}-${{ matrix.build_type }}.txt
@@ -131,4 +131,15 @@ jobs:
           name: qualification-${{ matrix.compiler }}-${{ matrix.build_type }}
           path: qualification/
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload CTest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-log-nightly-${{ matrix.compiler }}-${{ matrix.build_type }}
+          path: |
+            build/Testing/Temporary/LastTest.log
+            build-san/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
           retention-days: 30
